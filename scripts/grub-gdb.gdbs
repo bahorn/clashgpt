@@ -1,0 +1,120 @@
+define print_mm_region
+    printf "region: 0x%x\n", $arg0,
+    printf "- size: %u\n", $arg0->size
+    printf "- first: 0x%x\n", $arg0->first
+    printf "- next: 0x%x\n", $arg0->next
+    printf "- pre_size: %u\n", $arg0->pre_size
+    printf "- post_size: %u\n", $arg0->post_size
+    printf "\n",
+end
+
+# List all regions
+define mm_regions
+    set $curr=grub_mm_base
+    while($curr != 0)
+        print_mm_region $curr
+        set $curr=$curr->next
+    end
+end
+
+define print_mm_block
+    set $is_free="UNKNOWN"
+
+    if ($arg0->magic == 0x6db08fa4)
+        set $is_free="ALLOCATED"
+    end
+    if ($arg0->magic == 0x2d3c2808) 
+        set $is_free="FREE"
+    end
+
+    printf "0x%016x | %8u | %s\n", $arg0, $arg0->size * 32, $is_free
+end
+
+# List all free blocks in a region
+define mm_free_blocks
+    set $first=*(grub_mm_header_t *)$arg0
+    set $curr=$first
+
+    print_mm_block $curr
+    set $curr=$curr.next
+
+    while ($curr != $first)
+        print_mm_block $curr
+        set $curr=$curr.next
+    end
+end
+
+# For demonstration of the refcount overflow
+define patch_refcount
+    set $curr=grub_dl_head
+    while($curr != 0)
+        if ($_streq($curr->name, "$arg0"))
+            x/s $curr->name
+            x/wx &$curr->sz
+            p $curr->base
+            set (int) $curr->ref_count = $arg1
+        end
+        set $curr=$curr->next
+    end
+end
+
+# Dump the module structs
+define list_modules
+    set $curr=grub_dl_head
+    while($curr != 0)
+        p *$curr
+        set $curr=$curr->next
+    end
+end
+
+# Disp the module structs
+define disp_module
+    set $curr=grub_dl_head
+    while($curr != 0)
+        if ($_streq($curr->name, "$arg0"))
+            p *$curr
+        
+        end
+        set $curr=$curr->next
+    end
+end
+
+define grub_env_vars
+    set $curr = grub_current_context.vars[$arg0]
+    while ($curr != 0)
+        p $curr
+        p *$curr
+        set $curr = $curr->next
+    end
+end
+
+
+# Dump the grub_fs structs
+define list_filesystems
+    set $curr=grub_fs_list
+    while($curr != 0)
+        p *$curr
+        set $curr=$curr->next
+    end
+end
+
+
+define list_loopbacks
+    set $curr=loopback_list
+    while($curr != 0)
+        p *$curr
+        set $curr=$curr->next
+    end
+end
+
+define list_zfskey
+    set $curr=zfs_wrap_keys
+    while($curr != 0)
+        p $curr->key
+        set $curr=$curr->next
+    end
+end
+
+define disp_file
+    p *(grub_file_t) $arg0
+end
