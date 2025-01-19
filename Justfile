@@ -48,3 +48,9 @@ debug offset:
         -ex "source ./gdb_grub" \
         -ex "dynamic_load_symbols {{offset}}" \
         -ex "source {{pwd}}/scripts/grub-gdb.gdbs"
+
+[group('exploit')]
+exploit:
+    -rm -r ./artifacts/hda/x
+    mkdir -p artifacts/hda/x
+    python3 ./src ./artifacts/hda/x
