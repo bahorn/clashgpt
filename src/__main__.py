@@ -156,7 +156,7 @@ def main():
             f'if [ ${{uwu_{i}}} != ${{t_0}} ] ; then set end=uwu_{i}; fi'
         )
 
-    trigger += command('echo ${end}')
+    trigger += grub_print('[!] Corrupting: ${end}')
     trigger += command('if [ ${end} = NONE ] ; then normal_exit ; fi')
     trigger += grub_print('[!] Determining Depth')
 
