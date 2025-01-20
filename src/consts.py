@@ -9,7 +9,7 @@ MAX_DEPTH = 256
 
 BLOCK_SIZE = 512
 
-NUDGE = -128 - 64
+NUDGE = 0
 
 # the construction we are targetting is two 32kb allocations next to each other
 # need to nudge this slightly to get our controlled value over the

