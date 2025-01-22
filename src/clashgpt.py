@@ -171,6 +171,7 @@ def clashgpt(basepath):
             f'if [ ${{con_{i}}} != ${{t_0}} ] ; then set end=con_{i}; fi'
         )
 
+    trigger += probe.unset_active()
     trigger += grub_print('[!] Corrupting: ${end}')
     trigger += command('if [ ${end} = NONE ] ; then normal_exit ; fi')
 
