@@ -2,6 +2,18 @@
 
 This is an exploit for a bug in GRUB2 that was fixed in January 2025.
 It was found, reported and patched by me.
+It is a technically interesting bug in how you exploit it, requiring determining
+alignment to gain reliable control over a target object.
+
+This bug is only exploitable if the UEFI firmware doesn't place a guard page
+below the stack.
+This applies to EDK2 by default, as you need to enable a build option to have
+guard pages. (*cough* maybe this should be default? *cough*)
+
+This is was probably one of the harder bugs to exploit that I reported, with
+more preconditions etc, so if you actually want to exploit GRUB to bypass secure
+boot this really isn't the one.
+Just technically cool.
 
 ## Usage
 
@@ -10,22 +22,22 @@ Also have OVMF installed (`apt install ovmf`) as we need some uefi firmware.
 You can compile ovmf from the edk2 tree if you want, I'm just using my distros
 build.
 
-Setup (bootstrap, configure, compile, and copy grub to ./artifacts/hda/):
+Setup (bootstrap, configure, compile, and copy grub to `artifacts/hda/`):
 ```
 just setup-grub && just build-grub && just install-grub
 ```
 
-Run (generate the exploit files and write to `./artifacts/hda`, start qemu and
+Run (generate the exploit files and write to `artifacts/hda`, start qemu and
 run GRUB):
 ```
 just exploit && just run
 ```
 
-Remember, there are a bunch of offsets defined in `./src/consts.py` that you may
-have to change. (START_DEPTH, END_DEPTH, FUN_COUNT, OFFSET_START are the main
-ones to consider, but potentially TRASH_ALLOC, SPRAY_CONSTRUCTION and
-SPRAY_ENVVAR as well)
-The shellcode is just the SHELLCODE var in that file as well.
+Remember, there are a bunch of offsets defined in `src/consts.py` that you may
+have to change. (`START_DEPTH`, `END_DEPTH`, `FUN_COUNT`, `OFFSET_START` are the
+main ones to consider, but potentially `TRASH_ALLOC`, `SPRAY_CONSTRUCTION` and
+`SPRAY_ENVVAR` as well)
+The shellcode is just the `SHELLCODE` var in that file as well.
 
 Debug, after a `just run` in a different terminal:
 ```
@@ -167,9 +179,12 @@ call their iterate functions, calling them and passing itself as the hook [3].
 So this can be chained to recursively call itself and corrupt objects in a heap
 region allocated below the stack.
 
+So if you define the chain of partitions (GPT or msdos or whatever), you can
+trigger this issue by just running `ls` or `search.file does_not_exist`.
 
 ## Exploitation
 
+We need to perform the following steps:
 * Initial Setup
 * Forcing Memory Pressure
 * Setting up the construction
@@ -228,8 +243,8 @@ error: no such device: does_not_exist.
 error: no such device: does_not_exist.
 ```
 
-The default payload is just an infloop (EB FE), change that (SHELLCODE in
-src/consts.py) if you want anything more.
+The default payload is just an infloop (EB FE), change that (`SHELLCODE` in
+`src/consts.py`) if you want anything more.
 
 ## References
 
