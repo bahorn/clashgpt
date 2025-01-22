@@ -193,7 +193,7 @@ def clashgpt(basepath):
                 internal += command(
                     f'if [ "${{curr}}" = {teststr} ]; then set found=true ; break ; fi'
                 )
-        probe.unset_active()
+        internal += probe.unset_active()
 
     internal += ['break']
 
