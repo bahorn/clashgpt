@@ -207,49 +207,13 @@ ClashGPT - bah / January 2025
 error: out of memory.
 [!] Setting up construction
 error: no such device: does_not_exist.
-[!] Corrupting: uwu_0
+[!] Corrupting: con_0
 [!] Determining Depth
 error: no such device: does_not_exist.
 error: no such device: does_not_exist.
 error: no such device: does_not_exist.
 error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
-error: no such device: does_not_exist.
+[... ommited ...]
 error: no such device: does_not_exist.
 error: no such device: does_not_exist.
 error: no such device: does_not_exist.

