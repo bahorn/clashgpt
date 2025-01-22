@@ -16,6 +16,7 @@ PROBE_DEPTH = 128
 START_DEPTH = 150
 END_DEPTH = START_DEPTH+10
 
+# Why +32? I don't know, the exploit just doesn't work otherwise :(
 MAX_DEPTH = END_DEPTH + 32
 
 # how many functions to try to vary the depth

