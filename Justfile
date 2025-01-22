@@ -8,9 +8,8 @@ default:
 [group('setup')]
 get-ovmf:
     mkdir -p ./modules/ovmf
-    wget http://launchpadlibrarian.net/594251075/ovmf_2022.02-3_all.deb -O ./modules/ovmf/ovmf.deb
+    wget https://launchpadlibrarian.net/594251075/ovmf_2022.02-3_all.deb -O ./modules/ovmf/ovmf.deb
     cd ./modules/ovmf/ && ar x ./ovmf.deb && tar -xvf data.tar.zst
-
 
 [group('setup')]
 setup-grub:
