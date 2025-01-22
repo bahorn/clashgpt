@@ -1,7 +1,7 @@
 from gpt import stack
 from consts import BANNER, PROBE_DEPTH, MAX_DEPTH, BLOCK_SIZE, SHELLCODE, \
         TRASH_ALLOC, START_DEPTH, END_DEPTH, FUN_COUNT, SPRAY_ENVVAR, \
-        SPRAY_CONSTRUCTION
+        SPRAY_CONSTRUCTION, OFFSET_START
 from util import command, find_root, grub_print, force_regions_to_exist, \
         env_block, VarSplit, RecursiveFuncs, while_loop, grub_env_var, \
         grub_mm_header_t, hashval, Variable
@@ -22,8 +22,8 @@ class Primitive:
     The stack clashing primitive.
     """
 
-    def __init__(self, name, body, offset_start=32, max_depth=MAX_DEPTH,
-                 debug=False):
+    def __init__(self, name, body, offset_start=OFFSET_START,
+                 max_depth=MAX_DEPTH, debug=False):
         self._max_depth = max_depth
         self._debug = debug
         self._rf = RecursiveFuncs(f'trigger_{name}')

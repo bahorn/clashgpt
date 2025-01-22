@@ -7,6 +7,9 @@ HASHVAL_SPRAY = 1
 BLOCK_SIZE = 512
 GPT_PARTITION_TYPE = 0xee
 
+# offset to move the body of our probes by
+OFFSET_START = 48
+
 # depth to use to test if we corrupted the right object
 PROBE_DEPTH = 128
 # start / end depth to check
