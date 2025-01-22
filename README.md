@@ -28,6 +28,8 @@ just debug ADDRESS_FROM_GDBINFO
 
 `gdbinfo` is in the early-grub.cfg, so it should show up as grub starts.
 You may have to scroll up.
+Check `scripts/grub-gdb.gdbs` for my custom GDB commands to get information from
+GRUB (memory regions, variables defined, etc).
 
 ## The Bug - `part_iterate()` recursion
 
@@ -162,20 +164,28 @@ region allocated below the stack.
 
 ## Exploitation
 
+* Initial Setup
+* Forcing Memory Pressure
+* Setting up the construction
+* Probing to find the target variable
+* Alignment
+* Spraying grub_env_vars
+* Overwriting the env var write_hook
+* Taking control.
 
-### Memory Layout
-
-```
-RSP - (region + size)
-0xbff10518 - (0xbfe00000+987072) = 128344
-```
-
+### Memory Layout After Applying Pressure
 
 Looking at `lsefimmap` we can see the stack and our target range are adjacent:
 ```
 Type      Physical start  - end             #Pages        Size Attributes
 ldr-code  00000000bfe00000-00000000bfef0fff 000000f1    964KiB UC WC WT WB
 BS-data   00000000bfef1000-00000000bff10fff 00000020    128KiB UC WC WT WB
+```
+
+Looking at RSP compared to the region and seeing how far we are away:
+```
+RSP - (region + size)
+0xbff10518 - (0xbfe00000+987072) = 128344
 ```
 
 ### Taking Control
@@ -248,5 +258,23 @@ error: no such device: does_not_exist.
 error: no such device: does_not_exist.
 ```
 
-The default payload is just an infloop (EB FE), change that if you want anything
-more.
+The default payload is just an infloop (EB FE), change that (SHELLCODE in
+src/consts.py) if you want anything more.
+
+## References
+
+* https://web.archive.org/web/20050817190326/http://cansecwest.com/core05/memory_vulns_delalleau.pdf -
+  if you care about stack clashes, these slides are old but good. Common bug
+  class in firmware, been a few in iBoot.
+* https://xerub.github.io/ios/iboot/2018/05/10/de-rebus-antiquis.html - The
+  iBoot stack clash. Insane work! I actually did try the idea on using Tarjan's
+  algorithm from here, using CFGs i got from angr, but it never worked that well
+  for me.
+* https://www.qualys.com/2017/06/19/stack-clash/stack-clash.txt - Qualys work on
+  stack clashs in 2017 was how i first became aware of them as an exploitable
+  bug class. Focuses on more modern userland linux exploitation, where the hard
+  part is avoiding hitting a guard page.
+
+## License
+
+GPL3
