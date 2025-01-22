@@ -1,9 +1,16 @@
-ovmffw := env("OVMFFW", "/usr/share/OVMF/OVMF_CODE.fd")
+ovmffw := env("OVMFFW", "./modules/ovmf/usr/share/OVMF/OVMF_CODE.fd")
 pwd := env("PWD")
 
 [group('Listing')]
 default:
   just --list
+
+[group('setup')]
+get-ovmf:
+    mkdir -p ./modules/ovmf
+    wget http://launchpadlibrarian.net/594251075/ovmf_2022.02-3_all.deb -O ./modules/ovmf/ovmf.deb
+    cd ./modules/ovmf/ && ar x ./ovmf.deb && tar -xvf data.tar.zst
+
 
 [group('setup')]
 setup-grub:

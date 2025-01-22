@@ -3,3 +3,4 @@ notes.txt
 *.swp
 *.pyc
 __pycache__
+modules/ovmf

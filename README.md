@@ -18,14 +18,15 @@ Just technically cool.
 ## Usage
 
 Make sure you have submodules initialized, as we build GRUB 2.12 from source.
-Also have OVMF installed (`apt install ovmf`) as we need some uefi firmware.
-You can compile ovmf from the edk2 tree if you want, I'm just using my distros
-build.
+
+To get a OVMF, run `just get-ovmf`.
+This downloads a OVMF build from Ubuntu 22.04.
 
 Setup (bootstrap, configure, compile, and copy grub to `artifacts/hda/`):
 ```
 just setup-grub && just build-grub && just install-grub
 ```
+
 
 Run (generate the exploit files and write to `artifacts/hda`, start qemu and
 run GRUB):
