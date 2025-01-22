@@ -21,6 +21,12 @@ run GRUB):
 just exploit && just run
 ```
 
+Remember, there are a bunch of offsets defined in `./src/consts.py` that you may
+have to change. (START_DEPTH, END_DEPTH, FUN_COUNT, OFFSET_START are the main
+ones to consider, but potentially TRASH_ALLOC, SPRAY_CONSTRUCTION and
+SPRAY_ENVVAR as well)
+The shellcode is just the SHELLCODE var in that file as well.
+
 Debug, after a `just run` in a different terminal:
 ```
 just debug ADDRESS_FROM_GDBINFO
