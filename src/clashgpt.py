@@ -3,8 +3,9 @@ from consts import BANNER, PROBE_DEPTH, MAX_DEPTH, BLOCK_SIZE, SHELLCODE, \
         TRASH_ALLOC, START_DEPTH, END_DEPTH, FUN_COUNT, SPRAY_ENVVAR, \
         SPRAY_CONSTRUCTION, OFFSET_START
 from util import command, find_root, grub_print, force_regions_to_exist, \
-        env_block, VarSplit, RecursiveFuncs, while_loop, hashval, Variable
+        VarSplit, RecursiveFuncs, while_loop, hashval, Variable
 from fakestructs import grub_mm_header_t, grub_env_var
+from envblk import env_block
 
 
 def probe_body(body, offset=48):
