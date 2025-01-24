@@ -1,5 +1,6 @@
 ovmffw := env("OVMFFW", "./modules/ovmf/usr/share/OVMF/OVMF_CODE.fd")
 pwd := env("PWD")
+mem := "4096M"
 
 [group('Listing')]
 default:
@@ -42,7 +43,7 @@ run:
         -device e1000,netdev=net0,mac=4c:45:42:45:02:02 \
         -netdev user,id=net0,net=192.168.76.0/24,dhcpstart=192.168.76.9,dns=192.168.76.1 \
         -gdb tcp::1234 \
-        -m 4096M \
+        -m {{mem}} \
         -nographic \
         -no-reboot \
         -d int
