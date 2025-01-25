@@ -27,7 +27,6 @@ Setup (bootstrap, configure, compile, and copy grub to `artifacts/hda/`):
 just setup-grub && just build-grub && just install-grub
 ```
 
-
 Run (generate the exploit files and write to `artifacts/hda`, start qemu and
 run GRUB):
 ```
@@ -186,7 +185,8 @@ trigger this issue by just running `ls` or `search.file does_not_exist`.
 ## Exploitation
 
 We need to perform the following steps:
-* Initial Setup
+* Initial Setup - not that interesting, just create what we need for later
+  steps.
 * Forcing Memory Pressure
 * Setting up the construction
 * Probing to find the target variable
@@ -195,14 +195,26 @@ We need to perform the following steps:
 * Overwriting the env var write_hook
 * Taking control.
 
-### Memory Layout After Applying Pressure
+### Applying Pressure
 
-Looking at `lsefimmap` we can see the stack and our target range are adjacent:
+Something like the following works to apply memory presure:
+```
+set a=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+set a=${a}${a}${a}${a}${a}${a}${a}${a}
+....
+set a=${a}${a}${a}${a}${a}${a}${a}${a}
+```
+You can change out the initial value to be shellcode and just jump to that.
+
+After running that and getting `$rsp` we can look at `lsefimmap` and see the
+stack and our target range are adjacent:
 ```
 Type      Physical start  - end             #Pages        Size Attributes
 ldr-code  00000000bfe00000-00000000bfef0fff 000000f1    964KiB UC WC WT WB
 BS-data   00000000bfef1000-00000000bff10fff 00000020    128KiB UC WC WT WB
 ```
+(GRUB allocates the heap with the LoaderCode memory type, default RWX on
+everything but things with the enhanced memory protections)
 
 Looking at RSP compared to the region and seeing how far we are away:
 ```
@@ -210,14 +222,58 @@ RSP - (region + size)
 0xbff10518 - (0xbfe00000+987072) = 128344
 ```
 
-### Taking Control
+### Probing the Construction and Aligning
 
-The protective MBR is the best way to get control.
+Once memory pressure has forced a region to exist below the stack I forced on
+spraying 32KB allocations to create a layout like so:
+```
+| Heap Region        | |        stack region |
+  [cushion] [target]  <----------- [ stack ]
+```
+Basically, we have a target allocation, where we want to gain control over
+`grub_mm_header` for.
+We have the cushion there to stop hitting other allocations that may occur in
+the region.
 
-so goal is just to get the target struct to be under our fake mbr / top block
+We trigger the bug with a smaller depth to see if we can find the name of the
+sprayed target variable.
 
-using eval module, can work around this by defining a lookup table function.
+### Overwriting an `struct grub_env_var` and Taking Control
 
+A grub env var is defined as the following in `include/grub/env.h`:
+```
+struct grub_env_var
+{
+  char *name;
+  char *value;
+  grub_env_read_hook_t read_hook;
+  grub_env_write_hook_t write_hook;
+  struct grub_env_var *next;
+  struct grub_env_var **prevp;
+  struct grub_env_var *sorted_next;
+  int global;
+};
+```
+
+So you can see there are two hook functions we can overwrite.
+These get called whenever the variable is written to or referenced.
+(I should note you can also achieve other primitives like an arb-free with the
+other members, but that is beyond whats currently needed)
+
+As GRUB looks up variables from a hash table we need to be careful about the
+name.
+If the name does not match the hash table entry we corrupted we won't be able to
+look it up.
+To word around this, I just defaulted to using 0th entry as if set name to an
+empty string via a nullptr we can look it up.
+
+We can spray this specific structure by just defining new variables.
+If we set their names and values to be large, we can avoid them ending up in our
+free()'d block.
+
+Once we've sprayed(), we just trigger our overwrite again but with a different
+chain that sets name to NULL and the write_hook to a sprayed address.
+Then we can `set =1` and take control.
 
 ## Output
 
@@ -247,17 +303,16 @@ error: no such device: does_not_exist.
 The default payload is just an infloop (EB FE), change that (`SHELLCODE` in
 `src/consts.py`) if you want anything more.
 
-## References
+## Futher Reading
 
 * https://web.archive.org/web/20050817190326/http://cansecwest.com/core05/memory_vulns_delalleau.pdf -
-  if you care about stack clashes, these slides are old but good. Common bug
-  class in firmware, been a few in iBoot.
+  if you care about stack clashes, these slides are old but good. 
 * https://xerub.github.io/ios/iboot/2018/05/10/de-rebus-antiquis.html - The
   iBoot stack clash. Insane work! I actually did try the idea on using Tarjan's
   algorithm from here, using CFGs i got from angr, but it never worked that well
   for me.
 * https://www.qualys.com/2017/06/19/stack-clash/stack-clash.txt - Qualys work on
-  stack clashs in 2017 was how i first became aware of them as an exploitable
+  stack clashs in 2017 was how I first became aware of them as an exploitable
   bug class. Focuses on more modern userland linux exploitation, where the hard
   part is avoiding hitting a guard page.
 
