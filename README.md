@@ -54,7 +54,7 @@ GRUB (memory regions, variables defined, etc).
 The bug is a recursion triggered by GRUB recursively looking into partitions of
 partitions.
 
-```
+```c
     int
     grub_partition_iterate (struct grub_disk *disk,
                 grub_partition_iterate_hook_t hook, void *hook_data)
@@ -80,7 +80,7 @@ partitions.
     }
 ```
 
-```
+```c
     static int
     part_iterate (grub_disk_t dsk, const grub_partition_t partition, void *data)
     {
@@ -116,7 +116,7 @@ partitions.
     }
 ```
 
-```
+```c
     grub_err_t
     grub_gpt_partition_map_iterate (grub_disk_t disk,
                     grub_partition_iterate_hook_t hook,
@@ -241,7 +241,7 @@ sprayed target variable.
 ### Overwriting an `struct grub_env_var` and Taking Control
 
 A grub env var is defined as the following in `include/grub/env.h`:
-```
+```c
 struct grub_env_var
 {
   char *name;
