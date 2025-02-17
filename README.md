@@ -1,4 +1,4 @@
-# ClashGPT - bah / January 2025
+# ClashGPT - bah / February 2025
 
 This is an exploit for a bug in GRUB2 that was fixed in February 2025.
 It was found, reported and patched by me.
@@ -7,13 +7,14 @@ alignment to gain reliable control over a target object.
 
 This bug is only exploitable if the UEFI firmware doesn't place a guard page
 below the stack.
-This applies to EDK2 by default, as you need to enable a build option to have
-guard pages. (*cough* maybe this should be default? *cough*)
+This applies to EDK2 by default, as you need to [enable a build option to have guard pages](https://edk2-docs.gitbook.io/a-tour-beyond-bios-mitigate-buffer-overflow-in-ue/additional_overflow_detection/stack_overflow_detection).
+(*cough* maybe this should be default? *cough*)
 
 This is was probably one of the harder bugs to exploit that I reported, with
 more preconditions etc, so if you actually want to exploit GRUB to bypass secure
 boot this really isn't the one.
-Just technically cool.
+Just technically interesting bug.
+You don't see working stack clash exploits that often.
 
 ## Usage
 
@@ -194,6 +195,8 @@ We need to perform the following steps:
 * Spraying grub_env_vars
 * Overwriting the env var write_hook
 * Taking control.
+
+You want to start reading from the `clashgpt()` function in `src/clashgpt.py`.
 
 ### Applying Pressure
 
