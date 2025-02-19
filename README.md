@@ -16,6 +16,8 @@ boot this really isn't the one.
 Just technically interesting bug.
 You don't see working stack clash exploits that often.
 
+[Here is a video of it in action.](https://www.youtube.com/watch?v=aVSsxB3fvyc)
+
 ## Usage
 
 Make sure you have submodules initialized, as we build GRUB 2.12 from source.
