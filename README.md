@@ -1,6 +1,8 @@
 # ClashGPT - bah / February 2025
 
-This is an exploit for a bug in GRUB2 that was fixed in February 2025.
+This is an exploit for a bug in GRUB2 that was fixed in February 2025 with
+commit
+[`kern/partition: Limit recursion in part_iterate()`](https://git.savannah.gnu.org/cgit/grub.git/commit/grub-core?id=8a7103fddfd6664f41081f3bb88eebbf2871da2a).
 It was found, reported and patched by me.
 It is a technically interesting bug in how you exploit it, requiring determining
 alignment to gain reliable control over a target object.
@@ -184,6 +186,10 @@ region allocated below the stack.
 
 So if you define the chain of partitions (GPT or msdos or whatever), you can
 trigger this issue by just running `ls` or `search.file does_not_exist`.
+
+This was fixed by implementing a check in `part_iterate()` that makes stores a
+depth in a global variable and checks to see if the limit has been reached
+before recursing further.
 
 ## Exploitation
 
