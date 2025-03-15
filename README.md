@@ -1,4 +1,4 @@
-# ClashGPT - bah / February 2025
+# ClashGPT - bah / January 2025
 
 This is an exploit for a bug in GRUB2 that was fixed in February 2025 with
 commit
