@@ -15,7 +15,7 @@ This applies to EDK2 by default, as you need to [enable a build option to have g
 This is was probably one of the harder bugs to exploit that I reported, with
 more preconditions etc, so if you actually want to exploit GRUB to bypass secure
 boot this really isn't the one.
-Just technically interesting bug.
+Just a technically interesting bug.
 You don't see working stack clash exploits that often.
 
 [Here is a video of it in action.](https://www.youtube.com/watch?v=aVSsxB3fvyc)
@@ -282,11 +282,20 @@ spraying 32KB allocations to create a layout like so:
 ```
 Basically, we have a target allocation, where we want to gain control over
 `grub_mm_header` for.
+We want control over the heap metadata so we can change the size and force only
+our desired allocation to appear here after we release it back to the allocator.
 We have the cushion there to stop hitting other allocations that may occur in
 the region.
 
 We trigger the bug with a smaller depth to see if we can find the name of the
-sprayed target variable.
+sprayed target variable, before going on to finding the alignment to take
+control over the `grub_mm_header` of the target.
+
+The trick here is to try the bug with increasing depths, and then compare the
+value of target (which should be a string we can perform comparisons on).
+Once we have a desired value for the string, which we prefix with our fake
+`grub_mm_header`, we know the alignment and can free it and move onto the next
+step.
 
 ### Overwriting an `struct grub_env_var` and Taking Control
 
