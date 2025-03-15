@@ -157,8 +157,7 @@ class Function:
 
 class RecursiveFuncs:
     """
-    Essentially the core of the bug, functions that call another one like a
-    Matryoshka doll.
+    Define recursive functions.
     """
 
     def __init__(self, name, count=32):
