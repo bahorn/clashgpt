@@ -38,10 +38,11 @@ run GRUB):
 just exploit && just run
 ```
 
-Remember, there are a bunch of offsets defined in `src/consts.py` that you may
-have to change. (`START_DEPTH`, `END_DEPTH`, `FUN_COUNT`, `OFFSET_START` are the
-main ones to consider, but potentially `TRASH_ALLOC`, `SPRAY_CONSTRUCTION` and
-`SPRAY_ENVVAR` as well)
+There are a bunch of offsets defined in `src/consts.py` that you may
+have to change if you want to port this across firmware or different builds
+(`START_DEPTH`, `END_DEPTH`, `FUN_COUNT`, `OFFSET_START` are the main ones to
+consider, but potentially `TRASH_ALLOC`, `SPRAY_CONSTRUCTION` and
+`SPRAY_ENVVAR` as well).
 The shellcode is just the `SHELLCODE` var in that file as well.
 
 Debug, after a `just run` in a different terminal:
@@ -183,12 +184,14 @@ call their iterate functions, calling them and passing itself as the hook [3].
 
 So this can be chained to recursively call itself and corrupt objects in a heap
 region allocated below the stack.
+You overwrite the contents of the heap with part of the stack frame, which in
+the GPT case has several large buffers which are controlled by us.
 
 So if you define the chain of partitions (GPT or msdos or whatever), you can
 trigger this issue by just running `ls` or `search.file does_not_exist`.
 
-This was fixed by implementing a check in `part_iterate()` that makes stores a
-depth in a global variable and checks to see if the limit has been reached
+This bug was fixed by implementing a check in `part_iterate()` that makes stores
+a depth in a global variable and checks to see if the limit has been reached
 before recursing further.
 
 ## Exploitation
@@ -316,7 +319,7 @@ empty string via a nullptr we can look it up.
 
 We can spray this specific structure by just defining new variables.
 If we set their names and values to be large, we can avoid them ending up in our
-free()'d block.
+`free()`'d block.
 
 Once we've sprayed, we just trigger our overwrite again but with a different
 chain that sets name to NULL and the write_hook to a sprayed address.
