@@ -18,6 +18,8 @@ boot this really isn't the one.
 Just a technically interesting bug.
 You don't see working stack clash exploits that often.
 
+I wrote up a summary of how this exploit works for [Paged Out! #8 (pg. 88)](https://pagedout.institute/webview.php?issue=8&page=88&article=Stack+Clashing+the+GRUB2+Bootloader).
+
 [Here is a video of it in action.](https://www.youtube.com/watch?v=aVSsxB3fvyc)
 
 ## Usage
